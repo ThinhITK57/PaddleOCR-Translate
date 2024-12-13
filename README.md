@@ -1,8 +1,13 @@
 Git clone project
-cd app
+
+!cd app
+
 pip install -r requirement.txt
+
 Run app: uvicorn main:app --reload --host 0.0.0.0 --port 8069
+
 Test api by making simple python code to make request
+
 import requests
 
 # URL of the API endpoint
