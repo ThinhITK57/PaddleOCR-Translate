@@ -19,6 +19,7 @@ def ocr_image_processing(img: np.array, page_number):
         yield json.dumps({"page": page_number, "text": ocr_result.strip()}, ensure_ascii=False)
     except Exception as e:
         print(f"OCR processing failed for page {page_number}: {e}")
+        yield json.dumps({"page": page_number, "text": "", "error": str(e)}, ensure_ascii=False)
 
 
 def ocr_pdf_processing(file_path: str):
