@@ -10,12 +10,15 @@ ocr_engine = PPStructure(table=False, ocr=True, show_log=True)
 
 def ocr_image_processing(img: np.array, page_number):
     """Perform OCR on image and yield results."""
-    result = ocr_engine(img)
-    ocr_result = ""
-    for res in result:
-        for item in res['res']:
-            ocr_result += f"{item['text']}\n"
-    yield json.dumps({"page": page_number, "text": ocr_result.strip()}, ensure_ascii=False)
+    try:
+        result = ocr_engine(img)
+        ocr_result = ""
+        for res in result:
+            for item in res['res']:
+                ocr_result += f"{item['text']}\n"
+        yield json.dumps({"page": page_number, "text": ocr_result.strip()}, ensure_ascii=False)
+    except Exception as e:
+        print(f"OCR processing failed for page {page_number}: {e}")
 
 
 def ocr_pdf_processing(file_path: str):
