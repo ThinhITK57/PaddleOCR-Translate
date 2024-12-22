@@ -8,14 +8,14 @@ import io
 ocr_engine = PPStructure(table=False, ocr=True, show_log=True)
 
 
-def ocr_image_processing(img: np.array):
+def ocr_image_processing(img: np.array, page_number):
     """Perform OCR on image and yield results."""
     result = ocr_engine(img)
     ocr_result = ""
     for res in result:
         for item in res['res']:
             ocr_result += f"{item['text']}\n"
-    yield json.dumps({"page": 1, "text": ocr_result.strip()}, ensure_ascii=False)
+    yield json.dumps({"page": page_number, "text": ocr_result.strip()}, ensure_ascii=False)
 
 
 def ocr_pdf_processing(file_path: str):
@@ -32,7 +32,7 @@ def ocr_pdf_processing(file_path: str):
 
             img = Image.frombytes("RGB", [pm.width, pm.height], pm.samples)
             img = np.array(img)
-            yield from ocr_image_processing(img)
+            yield from ocr_image_processing(img, pg)
 
 
 def ocr_docx_processing(file_data: bytes):
