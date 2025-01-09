@@ -3,12 +3,33 @@ from PIL import Image
 import io
 import numpy as np
 from datetime import datetime
+from paddleocr import PaddleOCR
 
 
-def process_file(file, file_data: bytes):
+# Singleton to manage PaddleOCR instance
+class PaddleOCRManager:
+    _instances = {}
+
+    @classmethod
+    def get_instance(cls, lang):
+        """Retrieve a PaddleOCR instance for a specific language"""
+        if lang not in cls._instances:
+            cls._instances[lang] = PaddleOCR(
+                use_angle_cls=True,
+                lang=lang,
+                type="structure",
+                recovery=True,
+                output="../output/"
+            )
+        return cls._instances[lang]
+
+
+def process_file(file, file_data: bytes, lang):
     """Determine file type and process accordingly."""
     file_extension = file.filename.split('.')[-1].lower()
     file_name = file.filename.split('.')[0].lower()
+
+    ocr = PaddleOCRManager.get_instance(lang)
 
     if file_extension == "pdf":
         now = datetime.now()
@@ -17,7 +38,7 @@ def process_file(file, file_data: bytes):
         temp_file = f"{date_str}_{file_name}.pdf"
         with open(temp_file, "wb") as f:
             f.write(file_data)
-        return ocr_pdf_processing(temp_file)
+        return ocr_pdf_processing(ocr, temp_file)
 
     elif file_extension == "docx":
         return ocr_docx_processing(file_data)
