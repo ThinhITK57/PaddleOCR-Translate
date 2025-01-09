@@ -138,6 +138,7 @@ def ocr_pdf_processing(ocr, file_path: str, out_lang: str):
 
                 while text_width > round(rect_width*0.8):
                     font_size -= 1
+                    font_size = max(0, font_size)
                     calculated_font = ImageFont.truetype(font=font_path, size=font_size)
                     text_bbox = draw_rect.textbbox((0, 0), translated_text, font=calculated_font)
                     text_width = text_bbox[2] - text_bbox[0]
