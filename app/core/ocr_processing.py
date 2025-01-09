@@ -7,10 +7,14 @@ import fitz
 from googletrans import Translator
 from PIL import Image, ImageDraw, ImageFont
 import uuid
+
+# from trdg.data_generator import FakeTextDataGenerator
 translator = Translator()
+DOWNLOADS_PATH = "downloads"
+os.makedirs(f"{DOWNLOADS_PATH}", exist_ok=True)
 
 
-def ocr_image_processing(ocr, img: np.array, page_number):
+def ocr_image_processing(ocr, img: np.array, page_number, out_lang):
     """Perform OCR on image and yield results."""
     translated_texts = []
     try:
@@ -19,17 +23,13 @@ def ocr_image_processing(ocr, img: np.array, page_number):
         for res in result:
             if res is None:  # Skip when empty result detected to avoid TypeError:NoneType
                 print(f"[DEBUG] Empty page {page_number} detected, skip it.")
-                # yield json.dumps({"page": page_number, "text": ""}, ensure_ascii=False)
                 continue
             for line in res:
-                translated_text = translator.translate(line[1][0], src='en', dest='vi').text
+                translated_text = translator.translate(line[1][0], dest=f'{out_lang}').text
                 translated_texts.append((line[0], translated_text))
                 ocr_result += f"{line[1][0]}\n"
-        # yield json.dumps({"page": page_number, "text": ocr_result.strip()}, ensure_ascii=False)
     except Exception as e:
         print(f"OCR processing failed for page {page_number}: {e}")
-        # yield json.dumps({"page": page_number, "text": "", "error": str(e)}, ensure_ascii=False)
-
     return translated_texts
 
 
@@ -81,33 +81,21 @@ def transparent_image(image: Image) -> Image:
 #
 #     return text_image
 
-def images_to_pdf(image_list, output_pdf):
-    """
-    Merge a list of images into a single PDF file.
 
-    :param image_list: List of image file paths
-    :param output_pdf: Output PDF file path
-    """
-    # Open the images
-    images = [Image.open(image).convert("RGB") for image in image_list]
-
-    # Save the first image with the rest as additional pages
-    images[0].save(output_pdf, save_all=True, append_images=images[1:])
-    print(f"PDF created successfully at {output_pdf}")
-
-
-def ocr_pdf_processing(ocr, file_path: str):
+def ocr_pdf_processing(ocr, file_path: str, out_lang: str):
     """Process PDF and yield OCR results page by page."""
     font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "doc/fonts/latin.ttf"))
     process_id = str(uuid.uuid4())
-    os.makedirs(process_id, exist_ok=True)
+    out_file_path = os.path.join(DOWNLOADS_PATH, process_id)
+    os.makedirs(out_file_path, exist_ok=True)
     output_images = []
+
     with fitz.open(file_path) as pdf:
         print("=======================")
         print(f"Total pages: {pdf.page_count}")
         print("=======================")
         # for pg in range(0, pdf.page_count):
-        for pg in range(0, 1):
+        for pg in range(0, pdf.page_count):
             page = pdf[pg]
             print(f"Processing page {pg + 1}")
             mat = fitz.Matrix(2, 2)
@@ -117,7 +105,7 @@ def ocr_pdf_processing(ocr, file_path: str):
 
             img = Image.frombytes("RGB", [pm.width, pm.height], pm.samples)
             img = np.array(img)
-            translated_texts = ocr_image_processing(ocr, img, pg + 1)
+            translated_texts = ocr_image_processing(ocr, img, pg + 1, out_lang)
             image = Image.fromarray(img)
             draw = ImageDraw.Draw(image)
             for box, translated_text in translated_texts:
@@ -125,7 +113,6 @@ def ocr_pdf_processing(ocr, file_path: str):
                 top_left, top_right, bottom_right, bottom_left = box
                 x1, y1 = map(int, top_left)
                 x2, y2 = map(int, bottom_right)
-                print(x1, y1, x2, y2)
                 # Cropped image to calculate background
                 cropped_region = image.crop((x1, y1, x2, y2))
                 pixels = list(cropped_region.getdata())
@@ -134,7 +121,6 @@ def ocr_pdf_processing(ocr, file_path: str):
                     avg_color = tuple(sum(c[i] for c in pixels) // num_pixels for i in range(3))
                 else:
                     avg_color = (255, 255, 255)
-
                 # Vẽ hình chữ nhật (tùy chọn)
                 draw.rectangle([x1, y1, x2, y2], fill=avg_color)
                 # generate_text_image = generate_text_image(translated_text, )
@@ -150,7 +136,7 @@ def ocr_pdf_processing(ocr, file_path: str):
                 text_width = text_bbox[2] - text_bbox[0]
                 text_height = text_bbox[3] - text_bbox[1]
 
-                while text_width > rect_width:
+                while text_width > round(rect_width*0.8):
                     font_size -= 1
                     calculated_font = ImageFont.truetype(font=font_path, size=font_size)
                     text_bbox = draw_rect.textbbox((0, 0), translated_text, font=calculated_font)
@@ -159,24 +145,14 @@ def ocr_pdf_processing(ocr, file_path: str):
 
                 text_x = (rect_width - text_width) // 2
                 text_y = (rect_height - text_height) // 2
-
                 text_x += x1
                 text_y += y1
-                print(f"Text x: {text_x} -- Text y: {text_y}")
-                # Chọn màu chữ dựa trên màu nền
-                luminance = 0.299 * avg_color[0] + 0.587 * avg_color[1] + 0.114 * avg_color[2]
-                text_color = (0, 0, 0) if luminance > 128 else (255, 255, 255)
-
-                print("===============================================")
                 # Vẽ chữ vào ảnh
                 draw.text((text_x, text_y), translated_text, fill="black", font=calculated_font)
+            output_images.append(image)
 
-            output_image_path = f"{process_id}/output_page_{pg + 1}.jpg"
-            image.save(output_image_path)
-            output_images.append(output_image_path)
-
-        output_pdf_path = f"{process_id}/{process_id}_{file_path}"
-        images_to_pdf(output_images, output_pdf_path)
+        output_pdf_path = f"{out_file_path}/{process_id}_{file_path}"
+        output_images[0].save(output_pdf_path, save_all=True, append_images=output_images[1:])
         return output_pdf_path
 
 

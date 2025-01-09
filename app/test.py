@@ -5,9 +5,9 @@ with open(file_path, "rb") as file:
     # Prepare the file to send in the request
     files = {"file": ("test.pdf", file, "application/pdf")}
     # Send the POST request with the file
-    params = {"lang": "en"}
+    params = {"in_lang": "en", "out_lang": "vi"}
     response = requests.post(url, files=files, params=params, stream=True)
-    print(response)
+    print(response.json()['data']['file_path'])
     # Ensure the response is successful
     # if response.status_code == 200:
     #     # Iterate through the response stream

@@ -24,12 +24,12 @@ class PaddleOCRManager:
         return cls._instances[lang]
 
 
-def process_file(file, file_data: bytes, lang):
+def process_file(file, file_data: bytes, in_lang, out_lang):
     """Determine file type and process accordingly."""
     file_extension = file.filename.split('.')[-1].lower()
     file_name = file.filename.split('.')[0].lower()
 
-    ocr = PaddleOCRManager.get_instance(lang)
+    ocr = PaddleOCRManager.get_instance(in_lang)
 
     if file_extension == "pdf":
         now = datetime.now()
@@ -38,15 +38,15 @@ def process_file(file, file_data: bytes, lang):
         temp_file = f"{date_str}_{file_name}.pdf"
         with open(temp_file, "wb") as f:
             f.write(file_data)
-        return ocr_pdf_processing(ocr, temp_file)
+        return ocr_pdf_processing(ocr, temp_file, out_lang)
 
     elif file_extension == "docx":
         return ocr_docx_processing(file_data)
 
     elif file.content_type.startswith("image/"):
-        image = Image.open(io.BytesIO(file_data))
-        img = np.array(image)
-        return ocr_image_processing(img)
+        in_image = Image.open(io.BytesIO(file_data))
+        img = np.array(in_image)
+        return ocr_image_processing(ocr, img, 1, out_lang)
 
     else:
         raise ValueError("Unsupported file type. Please upload PDF, DOCX, or image files.")
