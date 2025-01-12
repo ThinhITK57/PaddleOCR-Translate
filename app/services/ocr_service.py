@@ -1,4 +1,4 @@
-from core.ocr_processing import ocr_pdf_processing, ocr_docx_processing, ocr_image_processing
+from core.ocr_processing import ocr_pdf_processing, ocr_docx_processing, ocr_image_processing, ocr_process
 from PIL import Image
 import io
 import numpy as np
@@ -24,13 +24,14 @@ class PaddleOCRManager:
         return cls._instances[lang]
 
 
-def process_file(file, file_data: bytes, in_lang, out_lang):
+def process_file(index, file, file_data: bytes, in_lang, out_lang, use_openai: bool):
     """Determine file type and process accordingly."""
     file_extension = file.filename.split('.')[-1].lower()
     file_name = file.filename.split('.')[0].lower()
 
     ocr = PaddleOCRManager.get_instance(in_lang)
 
+    print(file.content_type, in_lang)
     if file_extension == "pdf":
         now = datetime.now()
         date_str = now.strftime("%Y%m%d%H%M%S")
@@ -45,8 +46,7 @@ def process_file(file, file_data: bytes, in_lang, out_lang):
 
     elif file.content_type.startswith("image/"):
         in_image = Image.open(io.BytesIO(file_data))
-        img = np.array(in_image)
-        return ocr_image_processing(ocr, img, 1, out_lang)
-
+        img_array = np.array(in_image)
+        return ocr_process(ocr, img_array, index, out_lang, use_openai)
     else:
         raise ValueError("Unsupported file type. Please upload PDF, DOCX, or image files.")
