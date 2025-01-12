@@ -95,11 +95,14 @@ def ocr_process(ocr, in_image, index, out_lang, use_openai: bool = False):
     image = Image.fromarray(in_image)
     if translated_texts:
         draw = ImageDraw.Draw(image)
+        margin = 1
         for box, translated_text in translated_texts:
             # Extract box coordinates
             top_left, _, bottom_right, _ = box
             x1, y1 = map(int, top_left)
             x2, y2 = map(int, bottom_right)
+            x1 = max(0, x1 - margin)
+            y1 = max(0, y1 - margin)
 
             # Calculate average color using NumPy
             cropped_region = np.array(image.crop((x1, y1, x2, y2)))
